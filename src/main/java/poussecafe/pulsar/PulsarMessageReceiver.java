@@ -1,17 +1,17 @@
 package poussecafe.pulsar;
 
+import java.io.IOException;
 import java.util.Objects;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
 import poussecafe.exception.PousseCafeException;
 import poussecafe.jackson.JacksonMessageAdapter;
-import poussecafe.messaging.MessageReceiver;
+import poussecafe.messaging.EnvelopeSource;
+import poussecafe.messaging.ReceptionThreadMessageReceiver;
 import poussecafe.processing.MessageBroker;
-import poussecafe.processing.ReceivedMessage;
-import poussecafe.runtime.OriginalAndMarshaledMessage;
 
-public class PulsarMessageReceiver extends MessageReceiver {
+public class PulsarMessageReceiver extends ReceptionThreadMessageReceiver<Message<String>> {
 
     public static class Builder {
 
@@ -46,46 +46,24 @@ public class PulsarMessageReceiver extends MessageReceiver {
     @Override
     protected void actuallyStartReceiving() {
         consumer = consumerFactory.buildConsumer();
-        startReceptionThread();
+        super.actuallyStartReceiving();
     }
 
     private Consumer<String> consumer;
 
-    private void startReceptionThread() {
-        receptionThread = new Thread(receptionRunnable());
-        receptionThread.setDaemon(true);
-        receptionThread.start();
+    @Override
+    protected Object extractPayload(Message<String> envelope) {
+        return envelope.getValue();
     }
 
-    private Thread receptionThread;
+    @Override
+    protected poussecafe.messaging.Message deserialize(Object payload) {
+        return messageAdapter.adaptSerializedMessage(payload);
+    }
 
-    private Runnable receptionRunnable() {
-        return () -> {
-            while(true) {
-                Message<String> message = null;
-                try {
-                    message = consumer.receive();
-                    String stringPayload = message.getValue();
-                    onMessage(new ReceivedMessage.Builder()
-                            .payload(new OriginalAndMarshaledMessage.Builder()
-                                    .marshaled(stringPayload)
-                                    .original(messageAdapter.adaptSerializedMessage(stringPayload))
-                                    .build())
-                            .acker(ackRunnable(message))
-                            .interrupter(this::stopReceiving)
-                            .build());
-                } catch (PulsarClientException e) {
-                    logger.error("Error while consuming message, closing...", e);
-                    break;
-                } catch (Exception e) {
-                    logger.error("Error while handling message ({}), continuing consumption and acking anyway...", e.getMessage());
-                    logger.debug("Handling error stacktrace", e);
-                    if(message != null) {
-                        ack(message);
-                    }
-                }
-            }
-        };
+    @Override
+    protected Runnable buildAcker(Message<String> envelope) {
+        return ackRunnable(envelope);
     }
 
     private Runnable ackRunnable(Message<String> message) {
@@ -102,28 +80,33 @@ public class PulsarMessageReceiver extends MessageReceiver {
 
     private JacksonMessageAdapter messageAdapter = new JacksonMessageAdapter();
 
-    private void closeIfConnected() {
-        if(consumer.isConnected()) {
-            try {
-                consumer.close();
-            } catch (PulsarClientException e) {
-                logger.warn("Error while closing consumer", e);
+    @Override
+    protected EnvelopeSource<Message<String>> envelopeSource() {
+        return new EnvelopeSource<>() {
+            @Override
+            public Message<String> get() {
+                try {
+                    return consumer.receive();
+                } catch (PulsarClientException e) {
+                    throw new RuntimePulsarClientException(e);
+                }
             }
+
+            @Override
+            public void close() throws IOException {
+                closeIfConnected();
+            }
+        };
+    }
+
+    private void closeIfConnected() throws PulsarClientException {
+        if(consumer.isConnected()) {
+            consumer.close();
         }
     }
 
     @Override
-    protected void actuallyStopReceiving() {
-        closeIfConnected();
-        receptionThread.interrupt();
-    }
-
-    public void join() {
-        try {
-            receptionThread.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new PousseCafeException("Cloud not join reception thread", e);
-        }
+    protected synchronized void actuallyInterruptReception() {
+        throw new UnsupportedOperationException();
     }
 }
