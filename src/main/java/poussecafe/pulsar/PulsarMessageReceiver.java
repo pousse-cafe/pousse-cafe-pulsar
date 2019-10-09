@@ -8,19 +8,19 @@ import org.apache.pulsar.client.api.PulsarClientException;
 import poussecafe.exception.PousseCafeException;
 import poussecafe.jackson.JacksonMessageAdapter;
 import poussecafe.messaging.EnvelopeSource;
+import poussecafe.messaging.MessageReceiverConfiguration;
 import poussecafe.messaging.ReceptionThreadMessageReceiver;
-import poussecafe.processing.MessageBroker;
 
 public class PulsarMessageReceiver extends ReceptionThreadMessageReceiver<Message<String>> {
 
     public static class Builder {
 
-        public Builder messageBroker(MessageBroker messageBroker) {
-            this.messageBroker = messageBroker;
+        public Builder configuration(MessageReceiverConfiguration configuration) {
+            this.configuration = configuration;
             return this;
         }
 
-        private MessageBroker messageBroker;
+        private MessageReceiverConfiguration configuration;
 
         public Builder consumerFactory(ConsumerFactory consumerFactory) {
             this.consumerFactory = consumerFactory;
@@ -30,15 +30,15 @@ public class PulsarMessageReceiver extends ReceptionThreadMessageReceiver<Messag
         private ConsumerFactory consumerFactory;
 
         public PulsarMessageReceiver build() {
-            Objects.requireNonNull(messageBroker);
-            PulsarMessageReceiver receiver = new PulsarMessageReceiver(messageBroker);
+            Objects.requireNonNull(configuration);
+            PulsarMessageReceiver receiver = new PulsarMessageReceiver(configuration);
             receiver.consumerFactory = consumerFactory;
             return receiver;
         }
     }
 
-    private PulsarMessageReceiver(MessageBroker messageBroker) {
-        super(messageBroker);
+    private PulsarMessageReceiver(MessageReceiverConfiguration configuration) {
+        super(configuration);
     }
 
     private ConsumerFactory consumerFactory;

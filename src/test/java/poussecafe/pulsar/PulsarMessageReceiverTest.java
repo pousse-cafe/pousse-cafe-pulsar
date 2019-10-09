@@ -7,6 +7,7 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
+import poussecafe.messaging.MessageReceiverConfiguration;
 import poussecafe.processing.MessageBroker;
 import poussecafe.processing.ReceivedMessage;
 
@@ -44,7 +45,9 @@ public class PulsarMessageReceiverTest {
 
         receiver = new PulsarMessageReceiver.Builder()
                 .consumerFactory(consumerFactory)
-                .messageBroker(messageBroker)
+                .configuration(new MessageReceiverConfiguration.Builder()
+                        .messageBroker(messageBroker)
+                        .build())
                 .build();
         receiver.startReceiving();
     }
