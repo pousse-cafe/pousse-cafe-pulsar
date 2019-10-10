@@ -1,5 +1,6 @@
 package poussecafe.pulsar;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import org.apache.pulsar.client.api.SubscriptionType;
@@ -38,6 +39,11 @@ public class PulsarMessagingConfiguration {
 
         public Builder subscriptionType(SubscriptionType subscriptionType) {
             configuration.subscriptionType = subscriptionType;
+            return this;
+        }
+
+        public Builder statsInterval(Duration statsInterval) {
+            configuration.statsInterval = statsInterval;
             return this;
         }
 
@@ -94,4 +100,10 @@ public class PulsarMessagingConfiguration {
     }
 
     private SubscriptionType subscriptionType = SubscriptionType.Shared;
+
+    public Duration statsInterval() {
+        return statsInterval;
+    }
+
+    private Duration statsInterval = Duration.ofSeconds(-1);
 }

@@ -16,24 +16,37 @@ import poussecafe.runtime.OriginalAndMarshaledMessage;
 
 public class PulsarMessageSender extends MessageSender {
 
-    protected PulsarMessageSender(PulsarMessagingConfiguration configuration) {
-        super(new JacksonMessageAdapter());
-        configuration(configuration);
-        defaultTopicProducer = createProducer(configuration.defaultPublicationTopic());
+    public static class Builder {
+
+        private PulsarMessageSender sender = new PulsarMessageSender();
+
+        public Builder configuration(PulsarMessagingConfiguration configuration) {
+            sender.configuration = configuration;
+            return this;
+        }
+
+        public Builder client(PulsarClient client) {
+            sender.client = client;
+            return this;
+        }
+
+        public PulsarMessageSender build() {
+            Objects.requireNonNull(sender.configuration);
+            Objects.requireNonNull(sender.client);
+            return sender;
+        }
     }
 
-    private void configuration(PulsarMessagingConfiguration configuration) {
-        Objects.requireNonNull(configuration);
-        this.configuration = configuration;
+    private PulsarMessageSender() {
+        super(new JacksonMessageAdapter());
     }
 
     private PulsarMessagingConfiguration configuration;
 
+    private PulsarClient client;
+
     private Producer<String> createProducer(String topic) {
         try {
-            PulsarClient client = PulsarClient.builder()
-                    .serviceUrl(configuration.brokerUrl())
-                    .build();
             return client.newProducer(Schema.STRING)
                     .topic(topic)
                     .create();
