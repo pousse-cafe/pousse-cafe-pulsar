@@ -33,6 +33,7 @@ public class PulsarMessageSender extends MessageSender {
         public PulsarMessageSender build() {
             Objects.requireNonNull(sender.configuration);
             Objects.requireNonNull(sender.client);
+            sender.defaultTopicProducer = sender.createProducer(sender.configuration.defaultPublicationTopic());
             return sender;
         }
     }
@@ -45,6 +46,8 @@ public class PulsarMessageSender extends MessageSender {
 
     private PulsarClient client;
 
+    private Producer<String> defaultTopicProducer;
+
     private Producer<String> createProducer(String topic) {
         try {
             return client.newProducer(Schema.STRING)
@@ -54,8 +57,6 @@ public class PulsarMessageSender extends MessageSender {
             throw new PousseCafeException("Unable to connect to Pulsar broker", e);
         }
     }
-
-    private Producer<String> defaultTopicProducer;
 
     @Override
     protected synchronized void sendMarshalledMessage(OriginalAndMarshaledMessage marshalledMessage) {
