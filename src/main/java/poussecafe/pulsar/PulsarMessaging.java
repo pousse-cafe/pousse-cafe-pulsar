@@ -41,15 +41,21 @@ public class PulsarMessaging extends Messaging {
 
     @Override
     public MessagingConnection connect(MessageReceiverConfiguration receiverConfiguration) {
+        PulsarMessageSender.Builder messageSenderBuilder;
+        if(configuration.sendAsynchronously()) {
+            messageSenderBuilder = new AsyncPulsarMessageSender.Builder();
+        } else {
+            messageSenderBuilder = new SyncPulsarMessageSender.Builder();
+        }
         return new MessagingConnection.Builder()
                 .messaging(this)
                 .messageReceiver(new PulsarMessageReceiver.Builder()
                         .configuration(receiverConfiguration)
                         .consumerFactory(consumerFactory)
                         .build())
-                .messageSender(new PulsarMessageSender.Builder()
-                        .configuration(configuration)
+                .messageSender(messageSenderBuilder
                         .client(client)
+                        .configuration(configuration)
                         .build())
                 .build();
     }

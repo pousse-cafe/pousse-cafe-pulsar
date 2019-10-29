@@ -5,24 +5,22 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
-import poussecafe.messaging.MessageReceiverConfiguration;
 import poussecafe.messaging.MessageSender;
 import poussecafe.messaging.MessagingConnection;
 import poussecafe.processing.MessageBroker;
 import poussecafe.processing.ReceivedMessage;
 
-import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
-public class PulsarMessagingIT {
+public class SendAndReceiveIT extends PulsarMessagingIntegrationTestCase {
 
     @Test
-    public void sendAndReceive() throws InterruptedException {
+    public void sendAndReceiveSync() throws InterruptedException {
         givenMessageBrokerMock();
-        givenStartedConnection();
+        givenStartedConnection(false);
         whenSendingMessages();
         thenMessagesReceivedInOrder();
     }
@@ -34,6 +32,12 @@ public class PulsarMessagingIT {
 
     private MessageBroker messageBroker;
 
+    private void givenStartedConnection(boolean sendAsynchronously) {
+        connection = openConnectionWith(messageBroker, sendAsynchronously);
+    }
+
+    private MessagingConnection connection;
+
     private Void brokerDispatch(InvocationOnMock invocation) {
         ReceivedMessage receivedMessage = invocation.getArgument(0);
         receivedMessage.ack();
@@ -42,22 +46,6 @@ public class PulsarMessagingIT {
     }
 
     private BlockingQueue<TestMessage> receivedMessages = new LinkedBlockingQueue<>();
-
-    private void givenStartedConnection() {
-        PulsarMessagingConfiguration configuration = new PulsarMessagingConfiguration.Builder()
-                .brokerUrl("pulsar://localhost:6650")
-                .subscriptionName("test")
-                .subscriptionTopics(asList("test-topic"))
-                .defaultPublicationTopic("test-topic")
-                .build();
-        MessageReceiverConfiguration receiverConfiguration = new MessageReceiverConfiguration.Builder()
-                .messageBroker(messageBroker)
-                .build();
-        connection = new PulsarMessaging(configuration).connect(receiverConfiguration);
-        connection.startReceiving();
-    }
-
-    private MessagingConnection connection;
 
     private void whenSendingMessages() {
         MessageSender sender = connection.messageSender();
@@ -75,5 +63,14 @@ public class PulsarMessagingIT {
             TestMessage receivedMessage = receivedMessages.take();
             assertThat(receivedMessage.id, equalTo(i));
         }
+        connection.close();
+    }
+
+    @Test
+    public void sendAndReceiveAsync() throws InterruptedException {
+        givenMessageBrokerMock();
+        givenStartedConnection(true);
+        whenSendingMessages();
+        thenMessagesReceivedInOrder();
     }
 }

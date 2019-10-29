@@ -47,6 +47,11 @@ public class PulsarMessagingConfiguration {
             return this;
         }
 
+        public Builder sendAsynchronously(boolean sendAsynchronously) {
+            configuration.sendAsynchronously = sendAsynchronously;
+            return this;
+        }
+
         public PulsarMessagingConfiguration build() {
             Objects.requireNonNull(configuration.brokerUrl);
             Objects.requireNonNull(configuration.subscriptionTopics);
@@ -106,4 +111,10 @@ public class PulsarMessagingConfiguration {
     }
 
     private Duration statsInterval = Duration.ofSeconds(-1);
+
+    private boolean sendAsynchronously;
+
+    public boolean sendAsynchronously() {
+        return sendAsynchronously;
+    }
 }
